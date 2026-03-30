@@ -24,6 +24,7 @@ namespace DesktopKit.Common
 
             if (!string.IsNullOrEmpty(initialPath) && Directory.Exists(initialPath))
             {
+                dialog.SelectedPath = initialPath;
                 dialog.InitialDirectory = initialPath;
             }
 
