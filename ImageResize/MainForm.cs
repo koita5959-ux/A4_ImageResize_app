@@ -52,6 +52,7 @@ namespace DesktopKit.ImageResize
         public MainForm()
         {
             ComponentName = "ImageResize";
+            StatusBar.SizingGrip = false;
             InitializeControls();
             WireEvents();
         }
