@@ -473,15 +473,33 @@ namespace DesktopKit.ImageResize
                 preserveStructure = structureResult == DialogResult.Yes;
             }
 
-            // 出力先フォルダをダイアログで選択（デフォルト：元フォルダの親 + 出力フォルダ名）
-            var defaultParentDir = _selectedFolderPath != null
+            // 出力先フォルダをダイアログで選択（デフォルト：元フォルダと同じ場所 + 出力フォルダ名）
+            var defaultDir = _selectedFolderPath != null
                 ? Path.GetDirectoryName(_selectedFolderPath) ?? _selectedFolderPath
                 : "";
-            var defaultFullPath = Path.Combine(defaultParentDir, txtOutputName.Text);
+            var presetPath = Path.Combine(defaultDir, txtOutputName.Text);
+
+            // フォルダを先に作成してダイアログに名前を表示させる
+            bool preCreated = false;
+            if (!Directory.Exists(presetPath))
+            {
+                Directory.CreateDirectory(presetPath);
+                preCreated = true;
+            }
 
             var outputPath = FileDialogHelper.SelectFolder(
-                "出力先フォルダを選択してください", defaultFullPath);
-            if (outputPath == null) return;
+                "書き出し先を選択してください", presetPath);
+
+            if (outputPath == null)
+            {
+                // キャンセル時、空フォルダを削除
+                if (preCreated && Directory.Exists(presetPath)
+                    && Directory.GetFileSystemEntries(presetPath).Length == 0)
+                {
+                    Directory.Delete(presetPath);
+                }
+                return;
+            }
 
             // 確認ダイアログ
             var result = MessageBox.Show(

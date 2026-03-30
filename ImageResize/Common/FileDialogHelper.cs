@@ -22,10 +22,23 @@ namespace DesktopKit.Common
                 UseDescriptionForTitle = true
             };
 
-            if (!string.IsNullOrEmpty(initialPath) && Directory.Exists(initialPath))
+            if (!string.IsNullOrEmpty(initialPath))
             {
-                dialog.SelectedPath = initialPath;
-                dialog.InitialDirectory = initialPath;
+                if (Directory.Exists(initialPath))
+                {
+                    dialog.SelectedPath = initialPath;
+                    dialog.InitialDirectory = initialPath;
+                }
+                else
+                {
+                    // 存在しないパスの場合、親ディレクトリで開く
+                    var parent = Path.GetDirectoryName(initialPath);
+                    if (!string.IsNullOrEmpty(parent) && Directory.Exists(parent))
+                    {
+                        dialog.SelectedPath = parent;
+                        dialog.InitialDirectory = parent;
+                    }
+                }
             }
 
             return dialog.ShowDialog() == DialogResult.OK ? dialog.SelectedPath : null;
