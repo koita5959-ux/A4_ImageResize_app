@@ -659,7 +659,7 @@ namespace DesktopKit.ImageResize
             nudQuality.Enabled = hasJpegOrWebp;
             lblQualityNote.Visible = !hasJpegOrWebp;
 
-            StatusHelper.ShowInfo(StatusLabel, $"{fileCount}件の画像ファイルが見つかりました");
+            StatusHelper.ShowInfo(StatusLabel, "");
             _totalFileCount = fileCount;
 
             UpdateEstimatedSizes();
