@@ -32,6 +32,7 @@ namespace DesktopKit.ImageResize
         private DataGridView dgvFiles = null!;
 
         // --- 出力設定 ---
+        private Label lblFileCount = null!;
         private TextBox txtOutputName = null!;
 
         // --- 実行 ---
@@ -43,6 +44,7 @@ namespace DesktopKit.ImageResize
         private List<DisplayEntry> _displayEntries = new();
         private bool _outputNameManuallyEdited;
         private bool _isUpdatingOutputName;
+        private int _totalFileCount;
 
         /// <summary>
         /// MainFormのコンストラクタ。
@@ -238,24 +240,32 @@ namespace DesktopKit.ImageResize
                 colCheck, colFileName, colFormat, colSize, colResolution, colEstimated
             });
 
-            // --- 下部パネル: 出力設定 + 実行ボタン ---
+            // --- 下部パネル: ファイル件数 + 出力設定 + 実行ボタン ---
             var bottomPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 70,
+                Height = 90,
                 Padding = new Padding(10, 5, 10, 5)
+            };
+
+            lblFileCount = new Label
+            {
+                Text = "",
+                Location = new Point(10, 5),
+                AutoSize = true,
+                Font = new Font("メイリオ", 9f)
             };
 
             var lblOutputName = new Label
             {
                 Text = "出力フォルダ名:",
-                Location = new Point(10, 8),
+                Location = new Point(10, 30),
                 AutoSize = true
             };
 
             txtOutputName = new TextBox
             {
-                Location = new Point(130, 5),
+                Location = new Point(130, 27),
                 Size = new Size(658, 23),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
@@ -263,13 +273,14 @@ namespace DesktopKit.ImageResize
             btnExecute = new Button
             {
                 Text = "実行",
-                Location = new Point(10, 35),
+                Location = new Point(10, 57),
                 Size = new Size(100, 28),
                 Enabled = false
             };
 
             bottomPanel.Controls.AddRange(new Control[]
             {
+                lblFileCount,
                 lblOutputName, txtOutputName,
                 btnExecute
             });
@@ -633,6 +644,7 @@ namespace DesktopKit.ImageResize
             lblQualityNote.Visible = !hasJpegOrWebp;
 
             StatusHelper.ShowInfo(StatusLabel, $"{fileCount}件の画像ファイルが見つかりました");
+            _totalFileCount = fileCount;
 
             UpdateEstimatedSizes();
             UpdateExecuteButtonState();
@@ -732,7 +744,13 @@ namespace DesktopKit.ImageResize
         /// </summary>
         private void UpdateExecuteButtonState()
         {
-            btnExecute.Enabled = _selectedFolderPath != null && GetCheckedFiles().Count > 0;
+            var checkedCount = GetCheckedFiles().Count;
+            btnExecute.Enabled = _selectedFolderPath != null && checkedCount > 0;
+
+            if (_totalFileCount > 0)
+                lblFileCount.Text = $"{_totalFileCount}件の画像ファイルが見つかりました — {checkedCount}件選択中";
+            else
+                lblFileCount.Text = "";
         }
 
         /// <summary>
@@ -788,7 +806,8 @@ namespace DesktopKit.ImageResize
         {
             if (_selectedFolderPath == null) return;
 
-            var folderName = Path.GetFileName(_selectedFolderPath);
+            var trimmedPath = _selectedFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var folderName = Path.GetFileName(trimmedPath);
             var defaultName = OutputFolderManager.GenerateDefaultName(
                 folderName ?? "", (int)nudScale.Value);
 
