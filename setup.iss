@@ -1,13 +1,13 @@
 [Setup]
 AppId=DesktopKit_ImageResize
 AppName=DesktopKit ImageResize
-AppVersion=1.00
+AppVersion=1.02
 AppPublisher=便利アプリシリーズ
 DefaultDirName={autopf}\DesktopKit\ImageResize
 DefaultGroupName=DesktopKit
 DisableProgramGroupPage=yes
 OutputDir=installer
-OutputBaseFilename=ImageResize_Setup_v1.00
+OutputBaseFilename=ImageResize_Setup_v1.02
 Compression=lzma
 SolidCompression=yes
 UninstallDisplayName=DesktopKit ImageResize

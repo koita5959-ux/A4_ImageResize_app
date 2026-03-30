@@ -33,8 +33,6 @@ namespace DesktopKit.ImageResize
 
         // --- 出力設定 ---
         private TextBox txtOutputName = null!;
-        private TextBox txtOutputDir = null!;
-        private Button btnBrowseOutput = null!;
 
         // --- 実行 ---
         private Button btnExecute = null!;
@@ -81,7 +79,8 @@ namespace DesktopKit.ImageResize
                 ReadOnly = true,
                 Location = new Point(140, 10),
                 Size = new Size(648, 23),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                AllowDrop = true
             };
 
             var lblFormat = new Label
@@ -243,7 +242,7 @@ namespace DesktopKit.ImageResize
             var bottomPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 100,
+                Height = 70,
                 Padding = new Padding(10, 5, 10, 5)
             };
 
@@ -261,33 +260,10 @@ namespace DesktopKit.ImageResize
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
-            var lblOutputDir = new Label
-            {
-                Text = "出力先:",
-                Location = new Point(10, 38),
-                AutoSize = true
-            };
-
-            txtOutputDir = new TextBox
-            {
-                ReadOnly = true,
-                Location = new Point(130, 35),
-                Size = new Size(590, 23),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
-            };
-
-            btnBrowseOutput = new Button
-            {
-                Text = "参照",
-                Location = new Point(728, 33),
-                Size = new Size(60, 28),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-
             btnExecute = new Button
             {
                 Text = "実行",
-                Location = new Point(10, 65),
+                Location = new Point(10, 35),
                 Size = new Size(100, 28),
                 Enabled = false
             };
@@ -295,7 +271,6 @@ namespace DesktopKit.ImageResize
             bottomPanel.Controls.AddRange(new Control[]
             {
                 lblOutputName, txtOutputName,
-                lblOutputDir, txtOutputDir, btnBrowseOutput,
                 btnExecute
             });
 
@@ -311,13 +286,14 @@ namespace DesktopKit.ImageResize
         private void WireEvents()
         {
             btnSelectFolder.Click += BtnSelectFolder_Click;
+            txtFolderPath.DragEnter += TxtFolderPath_DragEnter;
+            txtFolderPath.DragDrop += TxtFolderPath_DragDrop;
             chkJpg.CheckedChanged += FormatFilter_Changed;
             chkPng.CheckedChanged += FormatFilter_Changed;
             chkWebp.CheckedChanged += FormatFilter_Changed;
             nudScale.ValueChanged += NudScale_ValueChanged;
             nudQuality.ValueChanged += NudQuality_ValueChanged;
             txtOutputName.TextChanged += TxtOutputName_TextChanged;
-            btnBrowseOutput.Click += BtnBrowseOutput_Click;
             btnExecute.Click += BtnExecute_Click;
             dgvFiles.CellValueChanged += DgvFiles_CellValueChanged;
             dgvFiles.CurrentCellDirtyStateChanged += DgvFiles_CurrentCellDirtyStateChanged;
@@ -332,6 +308,43 @@ namespace DesktopKit.ImageResize
             var path = FileDialogHelper.SelectFolder("画像フォルダを選択してください");
             if (path == null) return;
 
+            ApplySelectedFolder(path);
+        }
+
+        /// <summary>
+        /// ドラッグ中のカーソルがTextBox上に入った時のイベント。
+        /// </summary>
+        private void TxtFolderPath_DragEnter(object? sender, DragEventArgs e)
+        {
+            if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
+            {
+                var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (paths?.Length > 0 && Directory.Exists(paths[0]))
+                {
+                    e.Effect = DragDropEffects.Copy;
+                    return;
+                }
+            }
+            e.Effect = DragDropEffects.None;
+        }
+
+        /// <summary>
+        /// フォルダがドロップされた時のイベント。
+        /// </summary>
+        private void TxtFolderPath_DragDrop(object? sender, DragEventArgs e)
+        {
+            var paths = e.Data?.GetData(DataFormats.FileDrop) as string[];
+            if (paths?.Length > 0 && Directory.Exists(paths[0]))
+            {
+                ApplySelectedFolder(paths[0]);
+            }
+        }
+
+        /// <summary>
+        /// 選択されたフォルダを適用する共通処理。
+        /// </summary>
+        private void ApplySelectedFolder(string path)
+        {
             _selectedFolderPath = path;
             txtFolderPath.Text = path;
             _outputNameManuallyEdited = false;
@@ -384,18 +397,6 @@ namespace DesktopKit.ImageResize
         }
 
         /// <summary>
-        /// 「参照」ボタンのクリックイベント。
-        /// </summary>
-        private void BtnBrowseOutput_Click(object? sender, EventArgs e)
-        {
-            var path = FileDialogHelper.SelectFolder("出力先フォルダを選択してください");
-            if (path != null)
-            {
-                txtOutputDir.Text = path;
-            }
-        }
-
-        /// <summary>
         /// DataGridViewのチェックボックス変更を即時コミットする。
         /// </summary>
         private void DgvFiles_CurrentCellDirtyStateChanged(object? sender, EventArgs e)
@@ -442,12 +443,42 @@ namespace DesktopKit.ImageResize
             var checkedFiles = GetCheckedFiles();
             if (checkedFiles.Count == 0) return;
 
+            // サブフォルダが存在するか判定
+            bool hasSubFolders = _displayEntries.Any(
+                entry => entry.IsFolder && entry.Depth > 0);
+
+            bool preserveStructure = false;
+            if (hasSubFolders)
+            {
+                var structureResult = MessageBox.Show(
+                    "複数のフォルダが含まれています。\n\n" +
+                    "「はい」→ フォルダ構造を維持して出力\n" +
+                    "「いいえ」→ すべてのファイルを1つのフォルダにまとめて出力",
+                    "フォルダ構造の選択",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                if (structureResult == DialogResult.Cancel) return;
+                preserveStructure = structureResult == DialogResult.Yes;
+            }
+
+            // 出力先フォルダをダイアログで選択（デフォルト：元フォルダの親）
+            var defaultOutputDir = _selectedFolderPath != null
+                ? Path.GetDirectoryName(_selectedFolderPath) ?? _selectedFolderPath
+                : "";
+
+            var outputDir = FileDialogHelper.SelectFolder(
+                "出力先フォルダを選択してください", defaultOutputDir);
+            if (outputDir == null) return;
+
             var outputPath = OutputFolderManager.BuildOutputPath(
-                txtOutputDir.Text, txtOutputName.Text);
+                outputDir, txtOutputName.Text);
 
             // 確認ダイアログ
             var result = MessageBox.Show(
-                $"{checkedFiles.Count}件の画像をリサイズします。よろしいですか？\n\n出力先: {outputPath}",
+                $"{checkedFiles.Count}件の画像をリサイズします。よろしいですか？\n\n" +
+                $"出力先: {outputPath}\n" +
+                $"フォルダ構造: {(hasSubFolders ? (preserveStructure ? "維持" : "まとめる") : "単一フォルダ")}",
                 "確認",
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Question);
@@ -473,8 +504,22 @@ namespace DesktopKit.ImageResize
                     var file = checkedFiles[i];
                     StatusHelper.ShowInfo(StatusLabel, $"処理中... [{i + 1}/{total}] {file.FileName}");
 
+                    // フォルダ構造維持時は相対パスを保持して出力
+                    string fileOutputFolder;
+                    if (preserveStructure && _selectedFolderPath != null)
+                    {
+                        var fileDir = Path.GetDirectoryName(file.FullPath) ?? "";
+                        var relativePath = Path.GetRelativePath(_selectedFolderPath, fileDir);
+                        fileOutputFolder = Path.Combine(outputPath, relativePath);
+                        OutputFolderManager.EnsureFolder(fileOutputFolder);
+                    }
+                    else
+                    {
+                        fileOutputFolder = outputPath;
+                    }
+
                     var processResult = await Task.Run(() =>
-                        processor.Process(file, condition, quality, outputPath));
+                        processor.Process(file, condition, quality, fileOutputFolder));
 
                     if (processResult.Skipped) skipCount++;
                     else if (processResult.Success) successCount++;
@@ -719,7 +764,6 @@ namespace DesktopKit.ImageResize
         {
             btnExecute.Enabled = !processing;
             btnSelectFolder.Enabled = !processing;
-            btnBrowseOutput.Enabled = !processing;
             nudScale.Enabled = !processing;
             nudQuality.Enabled = !processing;
             chkJpg.Enabled = !processing;
@@ -735,10 +779,6 @@ namespace DesktopKit.ImageResize
             if (_selectedFolderPath == null) return;
 
             UpdateOutputFolderName();
-
-            // 出力先は元フォルダの親フォルダ
-            var parentDir = Path.GetDirectoryName(_selectedFolderPath);
-            txtOutputDir.Text = parentDir ?? _selectedFolderPath;
         }
 
         /// <summary>
