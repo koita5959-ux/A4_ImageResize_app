@@ -52,7 +52,7 @@ namespace DesktopKit.ImageResize
         public MainForm()
         {
             ComponentName = "ImageResize";
-            StatusBar.SizingGrip = false;
+            StatusBar.SizingGrip = true;
             InitializeControls();
             WireEvents();
         }
@@ -81,7 +81,7 @@ namespace DesktopKit.ImageResize
             {
                 ReadOnly = true,
                 Location = new Point(140, 10),
-                Size = new Size(648, 23),
+                Size = new Size(topPanel.ClientSize.Width - 140 - 20, 23),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 AllowDrop = true
             };
@@ -267,7 +267,7 @@ namespace DesktopKit.ImageResize
             txtOutputName = new TextBox
             {
                 Location = new Point(130, 27),
-                Size = new Size(658, 23),
+                Size = new Size(bottomPanel.ClientSize.Width - 130 - 20, 23),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
@@ -290,6 +290,9 @@ namespace DesktopKit.ImageResize
             Controls.Add(dgvFiles);
             Controls.Add(topPanel);
             Controls.Add(bottomPanel);
+
+            // StatusBar（リサイズグリップ）をウィンドウ最下層に配置
+            StatusBar.SendToBack();
         }
 
         /// <summary>
